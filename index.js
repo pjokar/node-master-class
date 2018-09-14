@@ -107,6 +107,12 @@ handlers.ping = (data, callback) => {
   callback(200);
 };
 
+// ping handler
+handlers.hello = (data, callback) => {
+  // callback status code 200
+  callback(200, {message: "To infinity - and beyond!"});
+};
+
 // not found handler
 handlers.notFound = (data, callback) => {
   // callback a status code
@@ -116,5 +122,5 @@ handlers.notFound = (data, callback) => {
 
 // define router
 const router = {
-  sample: handlers.sample
+  hello: handlers.hello
 };

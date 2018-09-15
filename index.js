@@ -5,6 +5,10 @@ const url = require('url');
 const StringDecoder = require('string_decoder').StringDecoder;
 const config = require('./config');
 const fs = require('fs');
+const { routes } = require('./routes');
+const Router = require('./lib/Router');
+
+
 
 // instantiate HTTP server
 const httpServer = http.createServer((req, res) => {
@@ -33,94 +37,33 @@ httpsServer.listen(config.httpsPort, () => {
 
 
 // all server functions
-const unifiedServer = (req, res) => {
+const unifiedServer = (request, response) => {
   // get URL and parse it
-  const parsedUrl = url.parse(req.url, true);
+  const parsedUrl = url.parse(request.url, true);
 
   // get the path
   const path = parsedUrl.pathname;
   const trimmedPath = path.replace(/^\/+|\/+$/g, '');
-
-  // get query string
-  const queryString = parsedUrl.query;
-
-  // get http method
-  const method = req.method.toLowerCase();
-
-  // get headers
-  const headers = req.headers;
 
   // get payload
   const decoder = new StringDecoder('utf-8');
 
   let buffer = '';
 
-  req.on('data', (data) => {
+  request.on('data', (data) => {
     buffer += decoder.write(data);
   });
 
-  req.on('end', () => {
+  request.on('end', () => {
     buffer += decoder.end();
 
     // choose the right handler for this request OR call not found hanlder
-    const chosenHandler = typeof(router[trimmedPath]) !== 'undefined' ? router[trimmedPath] : handlers.notFound;
+    const router = new Router(routes);
+    const route = router.getRoute(trimmedPath);
 
-    // construct data object to send to handler
-    const data = {
-      trimmedPath,
-      queryString,
-      method,
-      headers,
-      payload: buffer
-    };
-
-    // route the request to specified handler
-    chosenHandler(data, (statusCode, payload) => {
-      // use status code returned
-      statusCode = typeof(statusCode) === 'number' ? statusCode : 200;
-
-      // use payload returned from handler or use empty object
-      payload = typeof(payload) === 'object' ? payload : {};
-
-      // convert payload to string
-      const payloadAsString = JSON.stringify(payload);
-
-      res.setHeader('Content-Type', 'application/json');
-      res.writeHead(statusCode);
-      res.end(payloadAsString);
-
-      // log requested path
-      console.log("Response: ", statusCode, payloadAsString);
-    });
-
-
-
+    route.execute(response);
   });
 };
 
-// define handlers
-let handlers = {};
 
-// ping handler
-handlers.ping = (data, callback) => {
-  // callback status code 200
-  callback(200);
-};
 
-// ping handler
-handlers.hello = (data, callback) => {
-  // callback status code 200
-  callback(200, {message: "To infinity - and beyond!"});
-};
-
-// not found handler
-handlers.notFound = (data, callback) => {
-  // callback a status code
-  callback(404);
-
-};
-
-// define router
-const router = {
-  hello: handlers.hello
-};
